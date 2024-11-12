@@ -1,31 +1,37 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Link } from "react-router-dom";
-import useStore from "../store/Store";
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import useStore from '../store/store';
+
 
 function Login() {
-  const [inputUser, setInputUser] = useState("");
-  const [inputPass, setInputPass] = useState("");
+  const [inputUser, setInputUser] = useState('');
+  const [inputPass, setInputPass] = useState('');
   // const [errorMessage, setErrorMessage] = useState('');
   // const [loading, setLoading] = useState(false);
   // const [accessToken, setAccessToken] = useState(null);
-  const { data, loading, error, loginData, getNotes, notes, authId } =
-    useStore();
+  const { data, loading, error, notes, authUser, createNote,authId, getNotes, loginData,notesUI} = useStore();
 
-  const navigate = useNavigate(); // Hook for navigation
 
+  const navigate = useNavigate();  // Hook for navigation
+  
   const handleSubmit = (e) => {
     e.preventDefault();
-    const username = inputUser;
-    const password = inputPass;
+    const username = inputUser
+    const password = inputPass
+    
+    // setInputPass("");
+    // setInputUser("");
+    loginData( username, password );
+    
+  }
 
-    loginData(username, password);
-
-    if (data) {
-      getNotes(authId);
-      navigate("/note");
+  useEffect(() => {
+    if (authId) {
+      getNotes(authId);  // Get notes for user after login
+      navigate('/note');  // Navigate to home page after successful login
     }
-  };
+  }, [authId, navigate, getNotes]);
 
   // const handleLogin = async (event) => {
   //   event.preventDefault();
@@ -63,12 +69,7 @@ function Login() {
         <h1 className="text-2xl font-semibold mb-4 text-center">Login</h1>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label
-              htmlFor="username"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Username
-            </label>
+            <label htmlFor="username" className="block text-sm font-medium text-gray-700">Username</label>
             <input
               type="text"
               id="username"
@@ -81,15 +82,10 @@ function Login() {
           </div>
 
           <div className="mb-6">
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Password
-            </label>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
             <input
               type="password"
-              name="password"
+              name='password'
               autoComplete="on"
               id="password"
               value={inputPass}
@@ -105,19 +101,14 @@ function Login() {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-2 px-4 text-white font-semibold rounded-md ${
-              loading ? "bg-gray-400" : "bg-blue-500 hover:bg-blue-600"
-            }
+            className={`w-full py-2 px-4 text-white font-semibold rounded-md ${loading ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500'}
              focus:outline-none focus:ring-2 focus:ring-blue-500`}
           >
-            {loading ? "Logging in..." : "Login"}
+            {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
         <p className="text-center text-sm">
-          Don't have an account?{" "}
-          <Link to="/signup" className="text-blue-500 hover:text-blue-600">
-            Sign Up
-          </Link>
+          Don't have an account? <Link to="/signup" className="text-blue-500 hover:text-blue-600">Sign Up</Link>
         </p>
         {/* {accessToken && (
           <p className="mt-4 text-green-500 text-center font-medium">Login successful!</p>

@@ -1,22 +1,22 @@
-const express = require('express')
 const { PrismaClient } = require('@prisma/client')
+const express = require('express')
 const bcrypt = require('bcrypt');
-const authMiddleware = require('./middleware/auth-middelware');
-require('dotenv').config();
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
+const authMiddleware = require('./middleware/auth-middleware');
+require('dotenv').config();
 
 const saltRounds = 10;
  
-const jwt = require('jsonwebtoken');
 
 const app = express()
 
 const prisma = new PrismaClient()
-// use `prisma` in your application to read and write data in your DB
 
-app.use(express.json())
 
 app.use(cors());
+app.use(express.json())
+
 // code to create a new user
 app.post ('/user/signup', async (req, res) => {
     const userExists = await prisma.User.findUnique({
@@ -36,14 +36,17 @@ app.post ('/user/signup', async (req, res) => {
                 password: hashPassword
             }          
         });
+        const accesstoken = jwt.sign({ foo: "bar" }, process.env.TOKEN_KEY);
         res.json({ message: 'User created successfully',
-                username,
-                password: '' 
+            token: accesstoken,
+            userId: newUser.id,
+            username: newUser.username,
+            error: ''
         });
         
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: error.message,username: '', password: '' });
     }
 
 })
@@ -63,47 +66,39 @@ app.post('/user/login', async (req, res) => {
         const isPasswordValid = await bcrypt.compare(req.body.password, user.password);
 
         if (!isPasswordValid) {
-            return res.status(401).json({ message: 'Wrong password or username' });
+            return res.status(403).json({ message: 'Wrong password or username' });
         }
 
         // Use environment variable for the JWT secret
-        const accessToken = jwt.sign({ foo: "bar" }, process.env.TOKEN_KEY);
-        res.json({ message: 'Logged in successfully',username:user.username, userId: user.id,token: accessToken });
+        const accesstoken = jwt.sign({ foo: "bar" }, process.env.TOKEN_KEY);
+        res.json({ message: 'Logged in successfully',
+            token: accesstoken,
+            userId: user.id,
+            username: user.username,
+            error: ''
+        });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: err.message });
     }
 });
 
-app.post('/user/test', authMiddleware, async (req, res) => {
-    try {
-        const userPosts = await prisma.Note.findMany({
-            where: {
-                userId: req.body.userId,
-            }
-        });
-        res.json({ message: 'Posts retrieved successfully', posts: userPosts });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: error.message});
- }
-})
 
 // code to create a new note for a user
-app.post('/note/user/create', async (req, res) => {
+app.post('/note/create', async (req, res) => {
     try {
         const newNote = await prisma.Notes.create({
             data: {
                 title: req.body.title,
                 content: req.body.content,
-                userId: req.body.userId,
+                userId: req.body.authId,
             },
         });
-        res.json({ message: `Note for the User with id:${req.body.userId} created successfully`, note: newNote});
+        res.json({ message: `Note created successfully`, note: newNote, error: ''});
         
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'An error occurred' });
+        res.status(500).json({ message: 'An error occurred', error, note: ''  });
     }
 })
 
@@ -115,7 +110,7 @@ app.get('/user/:id', async (req, res) => {
                 id: parseInt(req.params.id),
             },
         }); 
-        res.json({ user: user});
+        res.json({ message: user, error: ''});
         
     } catch (error) {
         console.error(error);
@@ -147,16 +142,16 @@ app.post('/note/:id', async (req, res) => {
         }
 
         // Return the note if it belongs to the user
-        res.json({ message: 'Note retrieved successfully', note });
+        res.json({ message: 'Note retrieved successfully', note, error: '' });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'An error occurred' });
+        res.status(500).json({ message: 'An error occurred', note: '' });
     }
 });
 
 
 // code to get all notes of the user 
-app.post('/notes', async (req, res) => {
+app.post('/notes', authMiddleware,async (req, res) => {
     try {
         const userId = req.body.authId; // Get the user ID from the request body
         //if the user ID is not provided, return an error
@@ -169,28 +164,27 @@ app.post('/notes', async (req, res) => {
                 userId: userId,
             },
         });
-        if (notes.length === 0) {
-            return res.status(404).json({ message: 'No notes found for this user' });
+        if (!notes) {
+            return res.status(404).json({ message: "You have zero notes", notes: '' });
         }
-        res.json({ message: 'Notes retrieved successfully', notes });
+        res.json({ message: 'Notes retrieved successfully', notes, error: '' });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'An error occurred' });
+        res.status(500).json({ message: 'An error occurred', error, notes:''  });
     }
 });
 
 
 // code to delete a note
-app.delete('/delete/note/:id', async (req, res) => {
+app.delete('/delete/:noteId',authMiddleware, async (req, res) => {
     try {
-        const noteId = parseInt(req.params.id);
-        const  userId  = req.body.id;
+        const userId = req.body.authId;
+        const noteId = parseInt(req.params.noteId);
 
-        // Find the note by ID
         const note = await prisma.Notes.findUnique({
             where: {
-                id: noteId,
-            },
+                id: noteId
+            }
         });
 
         // Check if the note exists
@@ -211,35 +205,41 @@ app.delete('/delete/note/:id', async (req, res) => {
         });
 
         res.json({ message: 'Note deleted successfully' });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'An error occurred' });
+    } catch (err) {
+        res.status(500).json({  message: err.message  });
     }
 });
 
 
 
 // code to update a note
-app.put('/update/note/:id', async (req, res) => {
+app.put('/update/note/:id', authMiddleware,async (req, res) => {
     try{
         const noteId = parseInt(req.params.id);
-        const  userId  = req.body.id;
-        const updatedNote = await prisma.Notes.update({
+        const  userId  = req.body.authId;
+        const note = await prisma.Notes.findUnique({
             where: {
-                id: noteId,
+                id: noteId
+            }
+        })
+        if (!note) {
+            return res.status(404).json({ message: 'Note not found' });
+        }
+        if (note.userId!== userId) {
+            return res.status(401).json({ message: 'The note is not owned by the user' });
+        }
+        await prisma.Notes.update({
+            where: {
+                id: noteId
             },
             data: {
                 title: req.body.title,
-                content: req.body.content,
-                userId: userId,
-            },    
-        })
-        if(!updatedNote){
-            return res.status(404).json({ message: 'Note not found' });
-        }
-        res.json({ message: 'Note updated successfully', note: updatedNote });
-    }
-    catch (error) {
+                content: req.body.content
+            }
+        });
+        res.json({ message: 'Note updated successfully', note })
+        
+    } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'An error occurred' });
     }
@@ -248,4 +248,3 @@ app.put('/update/note/:id', async (req, res) => {
 app.listen(3000, () => {
     console.log('Server is running on port 3000');
 });
-
