@@ -8,7 +8,8 @@ const useStore = create((set) => ({
   loading: null,
   authUser: null,
   authId: null,
-  content: null,
+  newTitle: "",
+  newContent: "",
 
   loginData: async (username, password) => {
     set({ loading: true, error: null });
@@ -59,6 +60,7 @@ const useStore = create((set) => ({
     }
   },
 
+// get notes
   getNotes: async (authId) => {
     set({ error: null });
 
@@ -82,7 +84,8 @@ const useStore = create((set) => ({
       set({ error: err.message, loading: false });
     }
   },
-
+  
+// create new note
   createNote: async (title, content, authId) => {
     set({ loading: true, error: null });
 
@@ -107,6 +110,7 @@ const useStore = create((set) => ({
     }
   },
 
+//delete a note
   deleteNote: async (authId, noteId) => {
     set({ loading: true, error: null });
 
@@ -134,34 +138,54 @@ const useStore = create((set) => ({
   },
 
   // update a note
-  updateNote: async (noteId, updatedTitle, updatedContent) => {
+  updateNote: async (inputTitle, inputContent, authId, editingNoteId, ) => {
     set({ loading: true, error: null });
 
     try {
-      const response = await fetch(`http://localhost:3000/note/${noteId}`, {
+      const response = await fetch(`http://localhost:3000/update/note/${editingNoteId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           authorization: `Bearer ${localStorage.getItem("token")}`,
         },
-        body: JSON.stringify({ updatedTitle, updatedContent }),
+        body: JSON.stringify({ inputTitle, inputContent, authId }),
       });
       if (!response.ok) {
         throw new Error(`HTTP error! Failed to update note`);
       }
       const updatedNote = await response.json();
-      set((state) => {
-        const updatedNotes = state.notesUI.map((note) =>
-          note.id === updatedNote.id ? updatedNote : note
-        );
-        set({ notes: updatedNotes, error: "" });
-        return { notesUI: updatedNotes };
-      });
+      
     } catch (err) {
       console.error("Error:", err);
       set({ error: err.message, loading: false });
     }
   },
+
+  // get info of a note from backend
+  getNoteInfo: async (noteId, authId) => {
+    set({ error: null });
+    try {
+        const response = await fetch(`http://localhost:3000/note/${noteId}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({ authId }),
+        });
+  
+        if (!response.ok) {
+          throw new Error(`HTTP error! Failed to get data`);
+        }
+  
+        const res = await response.json();
+        set({ newTitle: res.note.title, newContent: res.note.content ,loading: false });
+        
+      } catch (err) {
+        set({ error: err.message, loading: false });
+      }
+}
+
 }));
 
 export default useStore;

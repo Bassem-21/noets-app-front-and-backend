@@ -117,12 +117,36 @@ app.get('/user/:id', async (req, res) => {
         res.status(500).json({ message: 'An error occurred' });
     }
 });
+// code to get a note for the user using get endpoint
+
+app.get('/note/:id', async (req, res) => { 
+    try {
+        const noteId = parseInt(req.params.id);
+        // Find the note by ID
+        const note = await prisma.Notes.findUnique({
+            where: {
+                id: noteId,
+            },
+        });
+        // Check if the note exists
+        if (!note) {
+            return res.status(404).json({ message: 'Note not found' });
+        }
+       
+        
+        // Return the note if it belongs to the user
+        res.json({ message: 'Note retrieved successfully', note, error: '' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'An error occurred', note: '' });
+    }
+})
 
 // code to find a note for the user
 app.post('/note/:id', async (req, res) => {
     try {
         const noteId = parseInt(req.params.id);
-        const  userId  = req.body.id;
+        const  userId  = req.body.authId;
 
         // Find the note by ID
         const note = await prisma.Notes.findUnique({
@@ -233,8 +257,8 @@ app.put('/update/note/:id', authMiddleware,async (req, res) => {
                 id: noteId
             },
             data: {
-                title: req.body.title,
-                content: req.body.content
+                title: req.body.inputTitle,
+                content: req.body.inputContent
             }
         });
         res.json({ message: 'Note updated successfully', note })
