@@ -1,10 +1,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+
 const useStore = create(
-  persist(
+    persist(
     (set) => ({
-      data: null,
       error: null,
       notesUI: { notes: [] },
       notes: null,
@@ -190,10 +190,25 @@ const useStore = create(
           set({ error: err.message, loading: false });
         }
       },
+
+      // function to log out a user
+      handleLogOut: () => {
+        localStorage.removeItem("token"); // Remove token from localStorage
+        set({
+          authUser: null,
+          authId: null,
+          notes: null,
+          error: null,
+          loading: null,
+          newTitle: "",
+          newContent: "",
+          notesUI: { notes: [] },
+        }); // Reset state in the store
+      },
     }),
     {
-      name: "notes-store", // This is the name of the storage key in localStorage
-      getStorage: () => localStorage, // You can change this to sessionStorage or another store
+      name: "app-storage", // Name for the storage key
+      getStorage: () => localStorage, // Define where to persist the data
     }
   )
 );

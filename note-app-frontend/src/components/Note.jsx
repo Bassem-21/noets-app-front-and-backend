@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import useStore from "../store/store";
+import { Link } from 'react-router-dom';
 
 function Note() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isUpdated, setIsUpdated] = useState(false);
+  const [inputTitle, setInputTitle] = useState("");
+  const [inputContent, setInputContent] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState(null);
+  const [randomColor, setRandomColor] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const {
-    data,
-    loading,
-    error,
-    notes,
     authUser,
     authId,
     getNotes,
@@ -19,15 +22,9 @@ function Note() {
     getNoteInfo,
     newTitle,
     newContent,
+    handleLogOut
   } = useStore();
 
-  const [inputTitle, setInputTitle] = useState("");
-  const [inputContent, setInputContent] = useState("");
-  const [editing, setEditing] = useState(false);
-  const [editingNoteId, setEditingNoteId] = useState(null);
-  const [randomColor, setRandomColor] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  
   // State for the modal
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState(null);
@@ -46,6 +43,9 @@ function Note() {
   };
 
   const handleUpdate = async (noteId) => {
+    // Set a random color when entering editing mode
+    setRandomColor(getRandomColor());
+    
     await getNoteInfo(noteId, authId);
     setInputTitle(newTitle);
     setInputContent(newContent);
@@ -70,7 +70,6 @@ function Note() {
       getNotes(authId);
     } else {
       createNote(inputTitle, inputContent, authId);
-      setRandomColor(getRandomColor());
       setInputTitle("");
       setInputContent("");
       getNotes(authId);
@@ -99,25 +98,42 @@ function Note() {
     setNoteToDelete(null);
   };
 
-  const filteredNotes = allNotes.filter((note) =>
-    note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    note.content.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredNotes = allNotes.filter(
+    (note) =>
+      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      note.content.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // alert url when pressing share
+  const handleShare = (noteId) => {
+    alert(`localhost:3000/note/${noteId}`);
+  };
 
   return (
     <div
-      className={`transition-all duration-300 ease-in-out ${isDarkMode ? "bg-gray-900 text-white" : "bg-[#fe9f47] text-gray-800"}`}
+      className={`transition-all duration-300 ease-in-out ${
+        isDarkMode ? "bg-gray-900 text-white" : "bg-[#fe9f47] text-gray-800"
+      }`}
     >
       <div className="flex min-h-screen">
         {/* Sidebar to display notes */}
         <div className="w-1/2 p-6 overflow-y-auto">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-3xl font-semibold text-gray-800">{authUser}'s Notes</h2>
+            <h2 className="text-3xl font-semibold text-gray-800">
+              {authUser}'s Notes
+            </h2>
             <button
               onClick={toggleDarkMode}
               className="px-4 py-2 rounded-full bg-blue-500 text-white hover:bg-blue-600 focus:outline-none transition duration-300"
             >
               {isDarkMode ? "🌞 Light Mode" : "🌙 Dark Mode"}
+            </button>
+            <button
+              type="button"
+              onClick={handleLogOut}
+              className="px-4 py-2 rounded-full bg-red-500 text-white hover:bg-red-600 focus:outline-none transition duration-300"
+            >
+              <Link to="/"><i className="fas fa-sign-out-alt"> Logout</i></Link>
             </button>
           </div>
 
@@ -135,12 +151,21 @@ function Note() {
           {/* List of Notes */}
           <ul className="space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto p-3">
             {filteredNotes.map((note) => (
-              <li key={note.id} className={`bg-[${randomColor}] rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out`}>
+              <li
+                key={note.id}
+                className={`${
+                  editingNoteId === note.id ? `bg-[${randomColor}]` : "bg-white"
+                } rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out`}
+              >
                 <div className="p-4">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="text-xl font-semibold text-gray-900">{note.title}</h3>
-                      <p className="text-sm text-gray-600 mt-2">{note.content}</p>
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        {note.title}
+                      </h3>
+                      <p className="text-sm text-gray-600 mt-2">
+                        {note.content}
+                      </p>
                     </div>
                     <div className="space-x-3 flex-shrink-0">
                       <button
@@ -166,7 +191,9 @@ function Note() {
 
                   {/* Created At / Updated At */}
                   <div className="text-xs text-gray-500 mt-3">
-                    <p>Created on {new Date(note.publishedAt).toLocaleString()}</p>
+                    <p>
+                      Created on {new Date(note.publishedAt).toLocaleString()}
+                    </p>
                   </div>
                 </div>
               </li>
@@ -175,12 +202,19 @@ function Note() {
         </div>
 
         {/* Form to create a new note */}
-        <div className={`${isDarkMode ? "bg-gray-900 text-white" : "bg-[#2e49d5] text-white"} w-1/2 p-8 flex flex-col justify-center items-center`}>
+        <div
+          className={`${
+            isDarkMode ? "bg-gray-900 text-white" : "bg-[#2e49d5] text-white"
+          } w-1/2 p-8 flex flex-col justify-center items-center`}
+        >
           <h2 className="text-3xl font-semibold mb-6">Create a New Note</h2>
           <form className="w-full max-w-lg bg-[#182775] p-8 rounded-xl">
             {/* Title Input */}
             <div className="mb-6">
-              <label htmlFor="title" className="block text-l font-medium text-white">
+              <label
+                htmlFor="title"
+                className="block text-l font-medium text-white"
+              >
                 Note Title
               </label>
               <input
@@ -195,7 +229,10 @@ function Note() {
 
             {/* Content Input */}
             <div className="mb-6">
-              <label htmlFor="content" className="block text-l font-medium text-white">
+              <label
+                htmlFor="content"
+                className="block text-l font-medium text-white"
+              >
                 Note Content
               </label>
               <textarea
@@ -224,7 +261,9 @@ function Note() {
       {showDeleteModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-[#182775] text-white border-white border-2 p-8 rounded-lg shadow-lg w-96">
-            <h3 className="text-xl mb-4">Are you sure you want to delete this note?</h3>
+            <h3 className="text-xl mb-4">
+              Are you sure you want to delete this note?
+            </h3>
             <div className="flex justify-around space-x-4">
               <button
                 onClick={handleCloseDeleteModal}
