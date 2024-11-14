@@ -13,6 +13,7 @@ const useStore = create(
       authId: null,
       newTitle: "",
       newContent: "",
+      loadingNoteInfo: false,
 
       loginData: async (username, password) => {
         set({ loading: true, error: null });
@@ -158,6 +159,7 @@ const useStore = create(
             throw new Error(`HTTP error! Failed to update note`);
           }
           const updatedNote = await response.json();
+    
         } catch (err) {
           console.error("Error:", err);
           set({ error: err.message, loading: false });
@@ -165,7 +167,7 @@ const useStore = create(
       },
 
       getNoteInfo: async (noteId, authId) => {
-        set({ error: null });
+        set({ loadingNoteInfo: true, error: null });
         try {
           const response = await fetch(`http://localhost:3000/note/${noteId}`, {
             method: "POST",
@@ -184,10 +186,10 @@ const useStore = create(
           set({
             newTitle: res.note.title,
             newContent: res.note.content,
-            loading: false,
+            loadingNoteInfo: false,
           });
         } catch (err) {
-          set({ error: err.message, loading: false });
+          set({ error: err.message, loadingNoteInfo: false });
         }
       },
 

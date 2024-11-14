@@ -9,7 +9,6 @@ function Note() {
   const [inputContent, setInputContent] = useState("");
   const [editing, setEditing] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState(null);
-  const [randomColor, setRandomColor] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const {
     authUser,
@@ -22,19 +21,13 @@ function Note() {
     getNoteInfo,
     newTitle,
     newContent,
-    handleLogOut
+    handleLogOut,
+    loadingNoteInfo
   } = useStore();
 
   // State for the modal
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState(null);
-
-  const colors = ["#FEBE66", "#FF5768", "#8DD7C0", "#01A5E4"];
-
-  const getRandomColor = () => {
-    const randomIndex = Math.floor(Math.random() * colors.length);
-    return colors[randomIndex];
-  };
 
   let allNotes = notesUI ? notesUI.notes : [];
 
@@ -43,14 +36,14 @@ function Note() {
   };
 
   const handleUpdate = async (noteId) => {
-    // Set a random color when entering editing mode
-    setRandomColor(getRandomColor());
-    
     await getNoteInfo(noteId, authId);
-    setInputTitle(newTitle);
-    setInputContent(newContent);
-    setEditing(true);
-    setEditingNoteId(noteId);
+
+    if (!loadingNoteInfo) {
+      setInputTitle(newTitle);
+      setInputContent(newContent);
+      setEditing(true);
+      setEditingNoteId(noteId);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -119,19 +112,19 @@ function Note() {
         {/* Sidebar to display notes */}
         <div className="w-1/2 p-6 overflow-y-auto">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-3xl font-semibold text-gray-800">
+            <h2  className={`text-3xl font-semibold ${isDarkMode ? " text-[#ffffff]" : " text-gray-800"}`}>
               {authUser}'s Notes
             </h2>
             <button
               onClick={toggleDarkMode}
-              className="px-4 py-2 rounded-full bg-blue-500 text-white hover:bg-blue-600 focus:outline-none transition duration-300"
+              className={`px-4 py-2 rounded-full  focus:outline-none transition duration-300 ${isDarkMode ? "bg-[#182775] text-white hover:bg-blue-600" : "bg-blue-500 text-black hover:bg-blue-600"}`}
             >
               {isDarkMode ? "🌞 Light Mode" : "🌙 Dark Mode"}
             </button>
             <button
               type="button"
               onClick={handleLogOut}
-              className="px-4 py-2 rounded-full bg-red-500 text-white hover:bg-red-600 focus:outline-none transition duration-300"
+              className={`px-4 py-2 rounded-full  focus:outline-none transition duration-300 ${isDarkMode ? "bg-red-700 text-white hover:bg-red-600" : "bg-red-500 text-black hover:bg-red-600"}`}
             >
               <Link to="/"><i className="fas fa-sign-out-alt"> Logout</i></Link>
             </button>
@@ -153,9 +146,11 @@ function Note() {
             {filteredNotes.map((note) => (
               <li
                 key={note.id}
-                className={`${
-                  editingNoteId === note.id ? `bg-[${randomColor}]` : "bg-white"
-                } rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out`}
+                className={`
+                  ${
+                  editingNoteId === note.id ? "bg-[#ff8512]" : "bg-[#ffeecf]"
+                }
+                rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out`}
               >
                 <div className="p-4">
                   <div className="flex justify-between items-start">
